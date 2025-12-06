@@ -65,12 +65,14 @@ public class UIManager : MonoBehaviour
     public void ShowGameOver()
     {
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        SoundManager.Instance.GameOverSound();
         Time.timeScale = 0f; // Stop the game
     }
 
     public void ShowVictory(int starCount)
     {
         if (victoryPanel != null) victoryPanel.SetActive(true);
+        SoundManager.Instance.GameWinSound();
         Time.timeScale = 0f;
 
         // Show the correct number of stars
@@ -82,4 +84,5 @@ public class UIManager : MonoBehaviour
                 stars[i].SetActive(false); // Hide star (or show empty star if you have logic for that)
         }
     }
+  
 }

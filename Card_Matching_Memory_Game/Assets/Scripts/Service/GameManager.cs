@@ -13,18 +13,16 @@ public class GameManager : MonoBehaviour
     public Sprite[] cardSprite;
 
     [Header("Level Settings")]
-    public LevelData[] levels; // Drag your 3 levels here in the Inspector
+    public LevelData[] levels; // Drag your 3 levels here in Inspector
     private LevelData currentLevelData;
 
     [Header("Game State")]
     public bool isGameActive = false;
-    public bool isChecking = false; // To prevent clicking while animations play
+    public bool isChecking = false;
 
-    // Logic Lists
+    // Lists & Stats
     private List<Card> flippedCards = new List<Card>();
     private List<int> cardIds = new List<int>();
-
-    // Stats
     private float currentTime;
     private int movesTaken;
     private int currentScore;
@@ -34,7 +32,6 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton Pattern
         if (instance == null) instance = this;
         else Destroy(gameObject);
 
@@ -43,39 +40,38 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // 1. Check which level was selected in the Menu (Defaults to 0/Easy)
+        // 1. Read which level the player clicked in the Menu
+        // Default to 0 (Easy) if nothing is found
         int levelIndex = PlayerPrefs.GetInt("SelectedLevel", 0);
         StartLevel(levelIndex);
     }
 
     private void Update()
     {
-        // 2. Handle the Timer
+        // 2. Timer Logic
         if (isGameActive)
         {
             currentTime -= Time.deltaTime;
 
-            // Update UI
             if (ScoreManager.instance != null)
                 ScoreManager.instance.UpdateTimer(currentTime);
 
-            // Check Time Limit
             if (currentTime <= 0)
             {
                 currentTime = 0;
-                GameOver(false); // Lose due to time
+                GameOver(false); // Time ran out
             }
         }
     }
 
     public void StartLevel(int levelIndex)
     {
-        // Safety check to prevent errors if index is wrong
+        // Safety check
         if (levelIndex >= levels.Length || levelIndex < 0) levelIndex = 0;
 
         currentLevelData = levels[levelIndex];
 
-        // 3. Reset Game Stats
+        // 3. Reset Stats
         currentTime = currentLevelData.timeLimit;
         movesTaken = 0;
         currentScore = 0;
@@ -84,26 +80,25 @@ public class GameManager : MonoBehaviour
         isGameActive = true;
         isChecking = false;
 
-        // 4. Update UI to show starting state
+        // 4. Update UI
         if (ScoreManager.instance != null)
         {
             ScoreManager.instance.UpdateScore(currentScore, currentCombo);
             ScoreManager.instance.UpdateMoves(movesTaken, currentLevelData.maxMoves);
         }
 
-        // 5. Generate the Grid
+        // 5. Build the Grid (Easy/Medium/Hard)
         GenerateBoard(currentLevelData.rows, currentLevelData.cols);
     }
 
     public void GenerateBoard(int rows, int columns)
     {
-        // Clear old cards
         foreach (Transform child in gridParent) Destroy(child.gameObject);
 
         int totalCards = rows * columns;
         cardIds.Clear();
 
-        // Create pairs (0,0, 1,1, 2,2...)
+        // Create pairs
         for (int i = 0; i < totalCards / 2; i++)
         {
             cardIds.Add(i);
@@ -133,17 +128,15 @@ public class GameManager : MonoBehaviour
 
         if (flippedCards.Count == 2 && !isChecking)
         {
-            isChecking = true; // Block input while checking
+            isChecking = true;
 
-            // Increment Moves
             movesTaken++;
             if (ScoreManager.instance != null)
                 ScoreManager.instance.UpdateMoves(movesTaken, currentLevelData.maxMoves);
 
-            // Check Move Limit
             if (movesTaken > currentLevelData.maxMoves)
             {
-                GameOver(false); // Lose due to moves
+                GameOver(false); // Out of moves
                 return;
             }
 
@@ -153,7 +146,6 @@ public class GameManager : MonoBehaviour
 
     IEnumerator CheckMatch()
     {
-        // Wait for flip animation to finish
         yield return new WaitForSeconds(0.6f);
 
         if (flippedCards[0].cardId == flippedCards[1].cardId)
@@ -163,9 +155,7 @@ public class GameManager : MonoBehaviour
             flippedCards[1].SetMatched();
 
             currentCombo++;
-            // Simple scoring formula
             currentScore += 10 + (currentCombo - 1) * 5;
-
             SoundManager.Instance.MatchSound();
         }
         else
@@ -173,20 +163,16 @@ public class GameManager : MonoBehaviour
             // --- NO MATCH ---
             flippedCards[0].FlipBack();
             flippedCards[1].FlipBack();
-
-            currentCombo = 0; // Reset combo
-
+            currentCombo = 0;
             SoundManager.Instance.MisMatchSound();
         }
 
-        // Update Score UI
         if (ScoreManager.instance != null)
             ScoreManager.instance.UpdateScore(currentScore, currentCombo);
 
         flippedCards.Clear();
-        isChecking = false; // Allow input again
+        isChecking = false;
 
-        // Check if won
         if (AllCardMatched())
         {
             GameOver(true);
@@ -195,7 +181,6 @@ public class GameManager : MonoBehaviour
 
     bool AllCardMatched()
     {
-        // Simple check: if any card is NOT matched, we haven't won yet
         foreach (Card card in FindObjectsOfType<Card>())
         {
             if (!card.IsMatched()) return false;
@@ -209,76 +194,96 @@ public class GameManager : MonoBehaviour
 
         if (victory)
         {
-            Debug.Log("Victory!");
-            SoundManager.Instance.GameOverSound();
+            
 
-            // Calculate Stars
+            // --- SAVE PROGRESS ---
+            // 1. Calculate Stars
             int stars = 1;
             float timeRatio = currentTime / currentLevelData.timeLimit;
             if (timeRatio > 0.5f) stars = 3;
             else if (timeRatio > 0.25f) stars = 2;
 
-            // Save Data (Logic from previous step)
+            // 2. Unlock Next Level Logic
             int currentIdx = System.Array.IndexOf(levels, currentLevelData);
+
+            // Save Stars
             int oldStars = PlayerPrefs.GetInt("LevelStars_" + currentIdx, 0);
             if (stars > oldStars) PlayerPrefs.SetInt("LevelStars_" + currentIdx, stars);
-            if (currentIdx + 1 < levels.Length) PlayerPrefs.SetInt("LevelUnlocked_" + (currentIdx + 1), 1);
+
+            // Unlock next level (if not last level)
+            if (currentIdx + 1 < levels.Length)
+            {
+                PlayerPrefs.SetInt("LevelUnlocked_" + (currentIdx + 1), 1);
+            }
+
             PlayerPrefs.Save();
 
-            // CALL THE NEW UI MANAGER
             if (UIManager.Instance != null) UIManager.Instance.ShowVictory(stars);
         }
         else
         {
-            // CALL THE NEW UI MANAGER
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver();
         }
     }
 
+    // --- GRID LAYOUT LOGIC (Prevent Overlap) ---
     private IEnumerator SetupBoardCoroutine(int numRows, int numCols, int totalCards)
     {
-        // Wait frame for GridLayout to calculate screen size
+        Canvas.ForceUpdateCanvases();
         yield return new WaitForEndOfFrame();
 
-        // 1. Configure Grid Layout
+        RectTransform panelRect = gridParent.GetComponent<RectTransform>();
+        float width = panelRect.rect.width;
+        float height = panelRect.rect.height;
+
+        float spacingX = gridLayoutGroup.spacing.x;
+        float spacingY = gridLayoutGroup.spacing.y;
+        float paddingX = gridLayoutGroup.padding.left + gridLayoutGroup.padding.right;
+        float paddingY = gridLayoutGroup.padding.top + gridLayoutGroup.padding.bottom;
+
+        // MATH: Subtract gaps so cards don't touch
+        float availableWidth = width - paddingX - (spacingX * (numCols - 1));
+        float availableHeight = height - paddingY - (spacingY * (numRows - 1));
+
+        float cardWidth = availableWidth / numCols;
+        float cardHeight = availableHeight / numRows;
+
+        // Prevent negative size
+        if (cardWidth <= 10) cardWidth = 100;
+        if (cardHeight <= 10) cardHeight = 100;
+
+        // Aspect Ratio: Make them rectangles (Width x 1.4)
+        float finalWidth = cardWidth;
+        float finalHeight = cardWidth * 1.4f;
+
+        // If too tall, shrink both to fit height
+        if (finalHeight > cardHeight)
+        {
+            finalHeight = cardHeight;
+            finalWidth = finalHeight / 1.4f;
+        }
+
+        gridLayoutGroup.cellSize = new Vector2(finalWidth, finalHeight);
         gridLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         gridLayoutGroup.constraintCount = numCols;
 
-        // 2. Dynamic Cell Sizing (Fits cards to screen)
-        float panelWidth = ((RectTransform)gridParent.transform).rect.width;
-        float panelHeight = ((RectTransform)gridParent.transform).rect.height;
-
-        float spacing = gridLayoutGroup.spacing.x;
-        float padding = gridLayoutGroup.padding.left + gridLayoutGroup.padding.right;
-
-        // Calculate available width per card
-        float cellWidth = (panelWidth - padding - (spacing * (numCols - 1))) / numCols;
-
-        // Keep them square
-        gridLayoutGroup.cellSize = new Vector2(cellWidth, cellWidth);
-
-        // 3. Instantiate Cards
+        // Spawn Cards
         for (int i = 0; i < totalCards; i++)
         {
             GameObject cardObj = Instantiate(cardPrefab, gridParent);
             Card card = cardObj.GetComponent<Card>();
-
-            // Use Modulo (%) to cycle through sprites if you have more cards than sprites
             card.Initialize(cardSprite[cardIds[i] % cardSprite.Length], cardIds[i]);
         }
 
-        // 4. Preview Cards
         StartCoroutine(RevealAndHideCards());
     }
 
     private IEnumerator RevealAndHideCards()
     {
-        // Temporarily show all cards so player can memorize
         List<Card> allCards = new List<Card>(FindObjectsOfType<Card>());
-
         foreach (Card card in allCards) card.ForceShowFront();
 
-        yield return new WaitForSeconds(1.5f); // Duration of preview
+        yield return new WaitForSeconds(1.5f);
 
         foreach (Card card in allCards) card.ForceHideFront();
     }
@@ -286,9 +291,9 @@ public class GameManager : MonoBehaviour
 [System.Serializable]
 public class LevelData
 {
-    public string levelName;
-    public int rows;
-    public int cols;
-    public float timeLimit;
-    public int maxMoves;
+    public string levelName;  // Name like "Easy", "Medium"
+    public int rows;          // Number of rows (e.g., 3)
+    public int cols;          // Number of columns (e.g., 4)
+    public float timeLimit;   // Time in seconds (e.g., 60)
+    public int maxMoves;      // Max moves allowed (e.g., 20)
 }

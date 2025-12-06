@@ -10,6 +10,7 @@ public class SoundManager : MonoBehaviour
     public AudioClip matchSound;
     public AudioClip misMatchSound;
     public AudioClip gameOverSound;
+    public AudioClip gameWinSound;
 
     [Header("Settings")]
     [Range(0f, 1f)] public float volume = 1f;
@@ -57,4 +58,9 @@ public class SoundManager : MonoBehaviour
     {
         if (gameOverSound != null) audioSource.PlayOneShot(gameOverSound, volume);
     }
+    public void GameWinSound()
+    {
+        if (gameWinSound != null) audioSource.PlayOneShot(gameWinSound, volume);
+    }
+
 }

@@ -76,7 +76,8 @@ public class Card : MonoBehaviour
     {
         isMatched = true;
         cardButton.interactable = false;
-        StartCoroutine(FadeOut());
+        frontImage.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+        // StartCoroutine(FadeOut());
     }
 
     public bool IsMatched() => isMatched;
@@ -127,23 +128,23 @@ public class Card : MonoBehaviour
         visualRoot.rotation = end;
     }
 
-    private IEnumerator FadeOut()
-    {
-        CanvasGroup group = GetComponent<CanvasGroup>();
-        // Add a CanvasGroup component if it doesn't exist
-        if (group == null) group = gameObject.AddComponent<CanvasGroup>();
+    //private IEnumerator FadeOut()
+    //{
+    //    CanvasGroup group = GetComponent<CanvasGroup>();
+    //    // Add a CanvasGroup component if it doesn't exist
+    //    if (group == null) group = gameObject.AddComponent<CanvasGroup>();
 
-        float duration = 0.5f;
-        float elapsed = 0f;
+    //    float duration = 0.5f;
+    //    float elapsed = 0f;
 
-        while (elapsed < duration)
-        {
-            group.alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-        group.alpha = 0f;
-    }
+    //    while (elapsed < duration)
+    //    {
+    //        group.alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+    //        elapsed += Time.deltaTime;
+    //        yield return null;
+    //    }
+    //    group.alpha = 0f;
+    //}
 
     // --- Helper functions for Game Start Preview ---
 
